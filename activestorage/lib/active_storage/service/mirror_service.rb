@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "active_support/core_ext/module/delegation"
+require "thread"
 
 module ActiveStorage
   # Wraps a set of mirror services and provides a single ActiveStorage::Service object that will all
@@ -70,10 +71,10 @@ module ActiveStorage
       end
 
       def perform_across_services(method, *args)
-        # FIXME: Convert to be threaded
-        each_service.collect do |service|
-          service.public_send method, *args
+        threads = each_service.map do |service|
+          Thread.new { service.public_send(method, *args) }
         end
+        threads.map(&:value)
       end
   end
 end
